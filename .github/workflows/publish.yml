@@ -4,10 +4,15 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write   # OIDC token for NuGet Trusted Publishing
+      contents: read
 
     steps:
       - name: Checkout
@@ -32,5 +37,11 @@ jobs:
       - name: Pack
         run: dotnet pack src/CrashBytes.Testing/CrashBytes.Testing.csproj --configuration Release --no-build --output ./nupkgs
 
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: CrashBytes
+
       - name: Push to NuGet
-        run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
